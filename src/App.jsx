@@ -1,5 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import "./App.css";
+import searchIcon from "./assets/search-icon.png";
+import micIcon from "./assets/mic.png";
+import stopIcon from "./assets/icons8-stop-100.png";
+import Overlay from "./Overlay.jsx";
+import backgroundImage from "./assets/backgroundimage.png";
 
 const BASE_URL = "http://localhost:5000";
 const DEEPGRAM_API_KEY = "ab763c7874734209d21d838a62804b8119175f0c"; // Replace with your actual API key
@@ -13,25 +18,40 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [audioPlaying, setAudioPlaying] = useState(false);
   const [isFullscreen, setFullscreen] = useState(false);
+  const [showVideo, setShowVideo] = useState(false);
+  const [activeButton, setActiveButton] = useState(null);
+  const [buttonsDisabled, setButtonsDisabled] = useState(false);
   const audioRef = useRef(null);
   const appRef = useRef(null);
-  const maxRecordingTime = 10000;
-  const mediaRecorderRef = useRef(null); // 25 seconds in milliseconds
+  const maxRecordingTime = 20000;
+  const mediaRecorderRef = useRef(null);
 
   const presetQuestions = [
-    "What is the weather like today?",
-    "Tell me a joke",
-    "What's the latest news?",
-    "Give me a random fact",
+    "about Zephy",
+    "Why it Gen AI Matters?",
+    "Share Gen AI Facts with us",
+    "Gen AI COE",
+    "AI Research Lab",
+    "AI INSTITUTE",
+    "AI ENABLE",
+    "AI LEAP",
+    "AI CONSORTIUM",
   ];
+  const displayedQuestions2 = [
+    "Value Levers We Enable for our Clients using Gen AI",
+    "Deloitte Gen AI COE Capabilities",
+  ];
+
   const toggleFullScreen = () => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen();
       setFullscreen(true);
+      console.log(isFullscreen);
     } else {
       if (document.exitFullscreen) {
         document.exitFullscreen();
         setFullscreen(false);
+        console.log(isFullscreen);
       }
     }
   };
@@ -47,7 +67,6 @@ function App() {
     const message = inputValue.trim();
 
     if (message) {
-      // Stop any currently playing audio
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current = null;
@@ -55,7 +74,8 @@ function App() {
       }
 
       appendMessage("user", message);
-      setIsLoading(true); // Show loading state
+      setIsLoading(true);
+      setInputValue("");
 
       try {
         const response = await fetch(`${BASE_URL}/chat`, {
@@ -80,11 +100,9 @@ function App() {
           const chunk = decoder.decode(value, { stream: true });
 
           if (chunk.startsWith("{")) {
-            // JSON response
             const data = JSON.parse(chunk);
             appendMessage("bot", data.response);
           } else if (chunk.includes("--audio")) {
-            // Start of audio data
             const audioBlob = await readAudioData(reader);
             playAudio(audioBlob);
           }
@@ -93,30 +111,54 @@ function App() {
         console.error("Error:", error);
         appendMessage("bot", "There was an error processing your request.");
       } finally {
-        setIsLoading(false); // Remove loading state
+        setIsLoading(false);
         setInputValue("");
       }
     }
   }
+
+  // async function readAudioData(reader) {
+  //   const chunks = [];
+  //   const decoder = new TextDecoder();
+  //   while (true) {
+  //     const { done, value } = await reader.read();
+  //     if (done) break;
+  //     const text = decoder.decode(value, { stream: true });
+  //     if (text.includes("--audio--")) {
+  //       break;
+  //     }
+  //     chunks.push(value);
+  //   }
+  //   return new Blob(chunks, { type: "audio/mpeg" });
+  // }
   async function readAudioData(reader) {
     const chunks = [];
-    const decoder = new TextDecoder();
+    const boundary = "--audio";
+    let isAudio = false;
+
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      const text = decoder.decode(value, { stream: true });
-      if (text.includes("--audio--")) {
-        break;
+
+      const chunk = new TextDecoder().decode(value, { stream: true });
+
+      if (chunk.includes(boundary)) {
+        isAudio = !isAudio; // Toggle audio state on boundary
+        if (!isAudio) continue; // Skip boundary chunk
       }
-      chunks.push(value);
+
+      if (isAudio) {
+        chunks.push(value);
+      }
     }
-    return new Blob(chunks, { type: "audio/mpeg" });
+
+    return new Blob(chunks, { type: "audio/mpeg" }); // or appropriate MIME type
   }
 
   function playAudio(audioBlob) {
     const audioUrl = URL.createObjectURL(audioBlob);
     const audio = new Audio(audioUrl);
-    audioRef.current = audio; // Store the current audio
+    audioRef.current = audio;
     setAudioPlaying(true);
     audio.play();
 
@@ -130,20 +172,21 @@ function App() {
   };
 
   const toggleRecording = async () => {
+    console.log("toggle");
     if (!isRecording) {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           audio: true,
         });
         const recorder = new MediaRecorder(stream);
-        mediaRecorderRef.current = recorder; // Store the recorder in the ref
+        mediaRecorderRef.current = recorder;
         setMediaRecorder(recorder);
 
-        let chunks = []; // Local variable to store chunks
+        let chunks = [];
 
         recorder.addEventListener("dataavailable", (event) => {
           if (event.data.size > 0) {
-            chunks.push(event.data); // Add chunk to local array
+            chunks.push(event.data);
           }
         });
 
@@ -155,7 +198,6 @@ function App() {
         recorder.start();
         setIsRecording(true);
         console.log("time start");
-        // Automatically stop recording after maxRecordingTime
         setTimeout(() => {
           console.log("timeout");
           stopRecording();
@@ -223,77 +265,101 @@ function App() {
     }
   };
 
+  function handleKeyDown(event) {
+    if (event.key === "Enter") {
+      event.preventDefault(); // Prevent the default action of form submission
+      sendMessage(inputValue);
+    }
+  }
+
   return (
-    <div className="App">
-      <button
-        onClick={toggleFullScreen}
-        style={{
-          position: "absolute",
-          top: "10px",
-          right: "10px",
-          width: "40px",
-          height: "40px",
-          backgroundColor: "transparent", // Make background transparent
-          border: "none", // Remove any border
-          opacity: 0, // Make the button invisible
-          cursor: "pointer",
-          zIndex: 1000,
-        }}
-        aria-label="Toggle Fullscreen" // Accessible label for screen readers
-      ></button>
-      <div className="question-grid">
-        {presetQuestions.map((question, index) => (
-          <button
-            key={index}
-            onClick={() => sendMessage(question)}
-            disabled={isLoading}
-          >
-            {question}
-          </button>
-        ))}
-      </div>
-      <div id="chat-messages">
-        {messages.map((msg, index) => (
-          <div key={index} className={`message ${msg.sender}-message`}>
-            {msg.message}
-          </div>
-        ))}
-        {isLoading && (
-          <div className="loading-message">Waiting for reply...</div>
-        )}
-      </div>
-      <div className="input-area">
+    <div
+      className=" h-screen bg-cover bg-center bg-no-repeat flex flex-col items-center justify-center  "
+      style={{ backgroundImage: `url(${backgroundImage})` }}
+    >
+      {" "}
+      {!isFullscreen ? (
+        <button
+          className="absolute top-4 right-4 p-2  rounded-md transition-opacity duration-300 hover:opacity-100"
+          onClick={toggleFullScreen}
+          onTouchStart={toggleFullScreen}
+        >
+          F
+        </button>
+      ) : (
+        <button
+          className="absolute top-4 right-4 p-2 bg-red-600 text-white rounded-md opacity-0 transition-opacity duration-300 hover:opacity-100"
+          onClick={toggleFullScreen}
+          onTouchStart={toggleFullScreen}
+        >
+          x
+        </button>
+      )}
+      <div className="flex h-14 items-center bg-gradient-to-r from-[#ffffff74] to-[#d0d0d009] bg-opacity-10 rounded-2xl w-full max-w-5xl mb-24  border z-50 ">
+        <img src={searchIcon} alt="Search" className="w-6 h-6 mx-2" />
         <input
           type="text"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
-          placeholder="Enter your question"
+          onKeyDown={handleKeyDown}
           disabled={isLoading}
+          placeholder={
+            isRecording
+              ? "Tap the button to stop recording"
+              : !isLoading
+              ? "Search"
+              : "Loading..."
+          }
+          className="flex-grow bg-transparent border-none text-white placeholder-white focus:outline-none"
         />
-        <button
-          style={{
-            backgroundColor: isLoading ? "gray" : "#128416",
-            color: "white",
-          }}
-          onClick={() => sendMessage(inputValue)}
-          disabled={isLoading}
-        >
-          Send
-        </button>
-        <button
+        <span
           onClick={toggleRecording}
+          onTouchStart={toggleRecording}
           disabled={isLoading}
-          style={{
-            backgroundColor: isLoading
-              ? "gray"
-              : isRecording
-              ? "red"
-              : "#2D72E9",
-            color: "white",
-          }}
+          className="text-cyan-400  items-center  cursor-pointer"
         >
-          {isRecording ? "Stop Recording" : "Record"}
-        </button>
+          {isRecording ? (
+            <div className="  bg-gradient-to-r from-[#ffffff74] to-[#d0d0d009] w-14 h-14 flex justify-center items-center border-2 border-white rounded-2xl ">
+              <img src={stopIcon} alt="Search" className="w-6 h-6" />
+            </div>
+          ) : (
+            <div className="  bg-gradient-to-r from-[#ffffff74] to-[#d0d0d009] w-14 h-14 flex justify-center items-center border-2 border-white rounded-2xl ">
+              <img src={micIcon} alt="Search" className="w-6 h-6" />
+            </div>
+          )}
+        </span>
+      </div>
+      <div className="flex flex-col bg-gray-100 bg-opacity-10 items-center justify-center w-full max-w-6xl p-10 border rounded-md shadow-glow transition">
+        {isRecording && <Overlay />}
+        <div className="flex items-center justify-center w-full max-w-6xl">
+          <div className="grid grid-cols-3 gap-4 w-full">
+            {presetQuestions.map((question, index) => (
+              <button
+                key={index}
+                onClick={() => sendMessage(question)}
+                onTouchStart={() => sendMessage(question)}
+                disabled={isLoading}
+                className="bg-gradient-to-r from-[#ff85e153] to-[#00eeff3e] bg-cover bg-center items-center text-center bg-no-repeat bg-opacity-10 rounded-sm p-4 text-cyan-400 hover:bg-cyan-400 hover:bg-opacity-20 hover:shadow-glow transition duration-300"
+              >
+                {question}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4 w-full mt-6">
+          {displayedQuestions2.map((question, index) => (
+            <button
+              key={index}
+              onClick={() => sendMessage(question)}
+              onTouchStart={() => sendMessage(question)}
+              disabled={isLoading}
+              className="bg-gradient-to-br from-[#ff85e153] to-[#00eeff3e] bg-cover bg-center text-center bg-no-repeat items-center bg-opacity-10 rounded-md p-4  text-cyan-400 hover:bg-cyan-400 hover:bg-opacity-20 hover:shadow-glow transition duration-300"
+            >
+              {question}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );
