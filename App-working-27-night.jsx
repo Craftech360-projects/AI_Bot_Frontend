@@ -5,10 +5,8 @@ import micIcon from "./assets/mic.png";
 import stopIcon from "./assets/icons8-stop-100.png";
 import Overlay from "./Overlay.jsx";
 import backgroundImage from "./assets/backgroundimage.png";
-import io from "socket.io-client"; // Import Socket.IO client
 
 const BASE_URL = "http://localhost:5000";
-const BASE_URL_SOCKET = "http://192.168.56.1:3000";
 const DEEPGRAM_API_KEY = "0c3313b4a4aa4332ac85cde977e5bc31be42ed0d"; // Replace with your actual API key
 
 function App() {
@@ -29,55 +27,26 @@ function App() {
   const maxRecordingTime = 20000;
   const mediaRecorderRef = useRef(null);
 
-  const socket = io(BASE_URL_SOCKET);
-  console.log("activeButton", activeButton);
   const presetQuestions = [
-    { question: "About Zephy", buttonIndex: 0 },
-    { question: "Why it Gen AI Matters?", buttonIndex: 1 },
-    { question: "Share Gen AI Facts with us", buttonIndex: 2 },
-    { question: "Gen AI COE", buttonIndex: 3 },
-    { question: "AI Research Lab", buttonIndex: 4 },
-    { question: "AI INSTITUTE", buttonIndex: 5 },
-    { question: "AI ENABLE", buttonIndex: 6 },
-    { question: "AI LEAP", buttonIndex: 7 },
-    { question: "AI CONSORTIUM", buttonIndex: 8 },
+    "about Zephy",
+    "Why it Gen AI Matters?",
+    "Share Gen AI Facts with us",
+    "Gen AI COE",
+    "AI Research Lab",
+    "AI INSTITUTE",
+    "AI ENABLE",
+    "AI LEAP",
+    "AI CONSORTIUM",
   ];
-
   const displayedQuestions2 = [
-    {
-      question: "Value Levers We Enable for our Clients using Gen AI",
-      buttonIndex: 9,
-    },
-    { question: "Deloitte Gen AI COE Capabilities", buttonIndex: 10 },
+    "Value Levers We Enable for our Clients using Gen AI",
+    "Deloitte Gen AI COE Capabilities",
   ];
   const handleButtonInteraction = (question) => {
-    setActiveButton(question.question);
+    setActiveButton(question);
     setButtonsDisabled(true);
-
-    if (question.buttonIndex === 0) {
-      console.log("sendign socket 0");
-      socket.emit("button-clicked", question.buttonIndex);
-    } else {
-      sendMessage(question);
-    }
+    sendMessage(question);
   };
-
-  useEffect(() => {
-    // Listen for 'stop-message' event from the server
-    socket.on("stop-message", (message) => {
-      console.log("stop message recived");
-      console.log(message); // Log the "STOP" message or handle it as needed
-
-      setButtonsDisabled(false);
-      setActiveButton(null);
-    });
-
-    return () => {
-      socket.off("button-clicked");
-      socket.off("stop-message");
-    };
-  }, []);
-
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.addEventListener("ended", () => {
@@ -95,50 +64,19 @@ function App() {
     };
   }, [audioRef.current]);
 
-  //   const buttonClass = (question) => `
-  //   ${
-  //     activeButton === question.question
-  //       ? "bg-gradient-to-r from-cyan-400 to-blue-500 text-white cursor-not-allowed touch-none"
-  //       : "bg-gradient-to-r from-[#835978] to-[#00BBFF3E] text-cyan-400 opacity-80"
-  //   }
-  //   ${
-  //     buttonsDisabled && activeButton !== question.question
-  //       ? "opacity-50 cursor-not-allowed touch-none  bg-gray-100"
-  //       : "hover:bg-cyan-400 hover:bg-opacity-20 hover:shadow-glow touch-none"
-  //   }
-
-  //   bg-cover bg-center items-center text-center bg-no-repeat bg-opacity-10 rounded-sm p-4 transition duration-300 text-white
-  // `;
-
-  // ${
-  //   buttonsDisabled && activeButton === "all"
-  //     ? "opacity-50  cursor-not-allowed touch-none"
-  //     : ""
-  // }
-
-  const buttonClass = (question) => {
-    const isActive =
-      activeButton === question.question || activeButton === "all";
-    const isDisabled =
-      buttonsDisabled &&
-      activeButton !== question.question &&
-      activeButton !== "all";
-
-    return `
-      ${
-        isActive && activeButton != "all"
-          ? "bg-gradient-to-r from-cyan-400 to-blue-500 text-white cursor-not-allowed touch-none"
-          : "bg-gradient-to-r from-[#835978] to-[#00BBFF3E] text-cyan-400 opacity-80"
-      }
-      ${
-        isDisabled
-          ? "opacity-50 bg-gradient-to-r from-gray-400 cursor-not-allowed touch-none"
-          : "hover:bg-cyan-400 hover:bg-opacity-20 hover:shadow-glow touch-none"
-      }
-      bg-cover bg-center items-center text-center bg-no-repeat bg-opacity-10 rounded-sm p-4 transition duration-300 text-white
-      ${activeButton === "all" ? "bg-gradient-to-r from-gray-400 " : ""}
-    `;
-  };
+  const buttonClass = (question) => `
+  ${
+    activeButton === question
+      ? "bg-gradient-to-r from-cyan-400 to-blue-500 text-white cursor-not-allowed touch-none"
+      : "bg-gradient-to-r from-[#835978] to-[#00BBFF3E] text-cyan-400 opacity-80"
+  }
+  ${
+    buttonsDisabled && activeButton !== question
+      ? "opacity-50 cursor-not-allowed touch-none"
+      : "hover:bg-cyan-400 hover:bg-opacity-20 hover:shadow-glow touch-none"
+  }
+  bg-cover bg-center items-center text-center bg-no-repeat bg-opacity-10 rounded-sm p-4 transition duration-300 text-white
+`;
 
   const toggleFullScreen = () => {
     if (!document.fullscreenElement) {
@@ -162,7 +100,7 @@ function App() {
   }, [messages]);
 
   async function sendMessage(inputValue) {
-    const message = inputValue.question.trim();
+    const message = inputValue.trim();
 
     if (message) {
       if (audioRef.current) {
@@ -174,7 +112,7 @@ function App() {
       appendMessage("user", message);
       setIsLoading(true);
       setInputValue("");
-      setButtonsDisabled(true);
+
       try {
         const response = await fetch(`${BASE_URL}/chat`, {
           method: "POST",
@@ -247,9 +185,7 @@ function App() {
         if (done) break;
         audioChunks.push(value);
       }
-      let index = 11;
-      setActiveButton("all");
-      socket.emit("button-clicked", index);
+
       const audioBlob = new Blob(audioChunks, { type: "audio/mp3" });
       const audioUrl = URL.createObjectURL(audioBlob);
 
@@ -263,16 +199,10 @@ function App() {
         setAudioPlaying(false);
         setButtonsDisabled(false);
         setActiveButton(null);
-        let index = 12;
-        setActiveButton(null);
-        socket.emit("button-clicked", index);
       });
     } catch (error) {
       console.error("Error converting text to speech:", error);
       alert("Error converting text to speech. Please try again.");
-      let index = 12;
-      setActiveButton(null);
-      socket.emit("button-clicked", index);
     }
   }
 
@@ -487,46 +417,43 @@ function App() {
         {isRecording && <Overlay />}
         <div className="flex items-center justify-center w-full max-w-6xl">
           <div className="grid grid-cols-3 gap-4 w-full">
-            {presetQuestions.map((question, buttonIndex) => (
+            {presetQuestions.map((question, index) => (
               <button
-                key={buttonIndex}
+                key={index}
                 //  onClick={() => handleButtonInteraction(question)}
                 onTouchStart={() => {
                   if (!buttonsDisabled && !activeButton) {
-                    handleButtonInteraction(question, buttonIndex);
+                    handleButtonInteraction(question);
                   }
                 }}
-                disabled={
-                  buttonsDisabled &&
-                  activeButton !== question.question &&
-                  activeButton !== "all"
-                }
+                disabled={buttonsDisabled && activeButton !== question}
                 className={buttonClass(question)}
               >
-                {question.question}
+                {question}
               </button>
             ))}
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4 w-full mt-6">
-          {displayedQuestions2.map((question, buttonIndex) => (
+          {displayedQuestions2.map((question, index) => (
             <button
-              key={buttonIndex}
+              // key={index}
+              // onClick={() => sendMessage(question)}
+              // onTouchStart={() => sendMessage(question)}
+              // disabled={isLoading}
+              // className="bg-gradient-to-br from-[#ff85e153] to-[#00eeff3e] bg-cover bg-center text-center bg-no-repeat items-center bg-opacity-10 rounded-md p-4  text-cyan-400 hover:bg-cyan-400 hover:bg-opacity-20 hover:shadow-glow transition duration-300"
+              key={index}
               // onClick={() => handleButtonInteraction(question)}
               onTouchStart={() => {
                 if (!buttonsDisabled && !activeButton) {
-                  handleButtonInteraction(question, buttonIndex);
+                  handleButtonInteraction(question);
                 }
               }}
-              disabled={
-                buttonsDisabled &&
-                activeButton !== question.question &&
-                activeButton !== "all"
-              }
+              disabled={buttonsDisabled && activeButton !== question}
               className={buttonClass(question)}
             >
-              {question.question}
+              {question}
             </button>
           ))}
         </div>
