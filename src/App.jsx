@@ -67,11 +67,11 @@ function App() {
     socket.emit("button-clicked", question.buttonIndex);
 
     if (question.buttonIndex === 0) {
-      if (isPaused == true) {
-        handleStart();
-      } else {
-        handleStop();
-      }
+      // if (isPaused == true) {
+      handleStart();
+      // } else {
+      //   handleStop();
+      // }
       socket.emit("button-clicked", 13);
       console.log("sendign socket 0");
       socket.emit("button-clicked", question.buttonIndex);
