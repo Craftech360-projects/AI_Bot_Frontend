@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import "./App.css";
+import audioFile from "./assets/zephy2.mp3";
 import searchIcon from "./assets/search-icon.png";
 import micIcon from "./assets/mic.png";
 import stopIcon from "./assets/icons8-stop-100.png";
@@ -12,6 +13,9 @@ const BASE_URL_SOCKET = "http://192.168.56.1:3000";
 const DEEPGRAM_API_KEY = "0c3313b4a4aa4332ac85cde977e5bc31be42ed0d"; // Replace with your actual API key
 
 function App() {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const audioRef2 = useRef(new Audio(audioFile));
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState("");
   const [isRecording, setIsRecording] = useState(false);
@@ -63,10 +67,16 @@ function App() {
     socket.emit("button-clicked", question.buttonIndex);
 
     if (question.buttonIndex === 0) {
+      if (isPaused == true) {
+        handleStart();
+      } else {
+        handleStop();
+      }
       socket.emit("button-clicked", 13);
       console.log("sendign socket 0");
       socket.emit("button-clicked", question.buttonIndex);
     } else {
+      handleStop();
       socket.emit("button-clicked", 13);
       sendMessage(question.question);
     }
@@ -402,7 +412,18 @@ function App() {
     // Automatically focus the input field when the component mounts
     inputRef.current.focus();
   }, []);
+  const handleStart = () => {
+    audioRef2.current.play();
+    setIsPlaying(true);
+    setIsPaused(false);
+  };
 
+  const handleStop = () => {
+    setIsPaused(true);
+    audioRef2.current.pause();
+    audioRef2.current.currentTime = 0;
+    setIsPlaying(false);
+  };
   return (
     <div
       className=" h-screen bg-cover bg-center bg-no-repeat flex flex-col items-center justify-center  "
@@ -425,6 +446,7 @@ function App() {
           x
         </button>
       )}
+
       <div className="flex h-14 items-center bg-gradient-to-r from-[#ffffff74] to-[#d0d0d009] absolute top-20 bg-opacity-10 rounded-2xl w-full max-w-6xl mb-12  border z-50 ">
         <img src={searchIcon} alt="Search" className="w-6 h-6 mx-2" />
         <input
