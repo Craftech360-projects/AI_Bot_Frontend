@@ -4,7 +4,7 @@ import searchIcon from "./assets/search-icon.png";
 import micIcon from "./assets/mic.png";
 import stopIcon from "./assets/icons8-stop-100.png";
 import Overlay from "./Overlay.jsx";
-import backgroundImage from "./assets/backgroundimage.png";
+import backgroundImage from "./assets/BGMain.png";
 import io from "socket.io-client"; // Import Socket.IO client
 
 const BASE_URL = "http://localhost:5000";
@@ -33,7 +33,7 @@ function App() {
   console.log("activeButton", activeButton);
   const presetQuestions = [
     { question: "About Zephy", buttonIndex: 0 },
-    { question: "Why it Gen AI Matters?", buttonIndex: 1 },
+    { question: "Why Gen AI Matters?", buttonIndex: 1 },
     { question: "Share Gen AI Facts with us", buttonIndex: 2 },
     { question: "Gen AI COE", buttonIndex: 3 },
     { question: "AI Research Lab", buttonIndex: 4 },
@@ -45,20 +45,30 @@ function App() {
 
   const displayedQuestions2 = [
     {
-      question: "Value Levers We Enable for our Clients using Gen AI",
+      question: "Value - We Enable for our Clients using Gen AI",
       buttonIndex: 9,
     },
     { question: "Deloitte Gen AI COE Capabilities", buttonIndex: 10 },
   ];
   const handleButtonInteraction = (question) => {
-    setActiveButton(question.question);
-    setButtonsDisabled(true);
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      setAudioPlaying(false);
+    }
+    // socket.emit("button-clicked", 13);
+    // clicked;
+    setAudioPlaying(false);
+    console.log("clicked");
+    socket.emit("button-clicked", question.buttonIndex);
 
     if (question.buttonIndex === 0) {
+      socket.emit("button-clicked", 13);
       console.log("sendign socket 0");
       socket.emit("button-clicked", question.buttonIndex);
     } else {
-      sendMessage(question);
+      socket.emit("button-clicked", 13);
+      sendMessage(question.question);
     }
   };
 
@@ -69,7 +79,7 @@ function App() {
       console.log(message); // Log the "STOP" message or handle it as needed
 
       setButtonsDisabled(false);
-      setActiveButton(null);
+      // setActiveButton(null);
     });
 
     return () => {
@@ -82,61 +92,22 @@ function App() {
     if (audioRef.current) {
       audioRef.current.addEventListener("ended", () => {
         setButtonsDisabled(false);
-        setActiveButton(null);
       });
     }
     return () => {
       if (audioRef.current) {
         audioRef.current.removeEventListener("ended", () => {
           setButtonsDisabled(false);
-          setActiveButton(null);
+          // setActiveButton(null);
         });
       }
     };
   }, [audioRef.current]);
 
-  //   const buttonClass = (question) => `
-  //   ${
-  //     activeButton === question.question
-  //       ? "bg-gradient-to-r from-cyan-400 to-blue-500 text-white cursor-not-allowed touch-none"
-  //       : "bg-gradient-to-r from-[#835978] to-[#00BBFF3E] text-cyan-400 opacity-80"
-  //   }
-  //   ${
-  //     buttonsDisabled && activeButton !== question.question
-  //       ? "opacity-50 cursor-not-allowed touch-none  bg-gray-100"
-  //       : "hover:bg-cyan-400 hover:bg-opacity-20 hover:shadow-glow touch-none"
-  //   }
-
-  //   bg-cover bg-center items-center text-center bg-no-repeat bg-opacity-10 rounded-sm p-4 transition duration-300 text-white
-  // `;
-
-  // ${
-  //   buttonsDisabled && activeButton === "all"
-  //     ? "opacity-50  cursor-not-allowed touch-none"
-  //     : ""
-  // }
-
-  const buttonClass = (question) => {
-    const isActive =
-      activeButton === question.question || activeButton === "all";
-    const isDisabled =
-      buttonsDisabled &&
-      activeButton !== question.question &&
-      activeButton !== "all";
-
-    return `
-      ${
-        isActive && activeButton != "all"
-          ? "bg-gradient-to-r from-cyan-400 to-blue-500 text-white cursor-not-allowed touch-none"
-          : "bg-gradient-to-r from-[#835978] to-[#00BBFF3E] text-cyan-400 opacity-80"
-      }
-      ${
-        isDisabled
-          ? "opacity-50 bg-gradient-to-r from-gray-400 cursor-not-allowed touch-none"
-          : "hover:bg-cyan-400 hover:bg-opacity-20 hover:shadow-glow touch-none"
-      }
-      bg-cover bg-center items-center text-center bg-no-repeat bg-opacity-10 rounded-sm p-4 transition duration-300 text-white
-      ${activeButton === "all" ? "bg-gradient-to-r from-gray-400 " : ""}
+  const buttonClass = () => {
+    return ` 
+        
+     " h-[77px] opacity-80 bg-gradient-to-r from-[#E5A2D488]  to-[#00EEFF76] text-cyan-400 opacity-90 rounded md bg-transparent bg-cover bg-center items-center text-center bg-no-repeat bg-color- bg-opacity-10 rounded-sm p-4 transition duration-300 text-white bg-transparent   
     `;
   };
 
@@ -162,7 +133,8 @@ function App() {
   }, [messages]);
 
   async function sendMessage(inputValue) {
-    const message = inputValue.question.trim();
+    console.log("inputValue", inputValue);
+    const message = inputValue.trim();
 
     if (message) {
       if (audioRef.current) {
@@ -262,16 +234,16 @@ function App() {
       audio.addEventListener("ended", () => {
         setAudioPlaying(false);
         setButtonsDisabled(false);
-        setActiveButton(null);
+        // setActiveButton(null);
         let index = 12;
-        setActiveButton(null);
+        // setActiveButton(null);
         socket.emit("button-clicked", index);
       });
     } catch (error) {
       console.error("Error converting text to speech:", error);
       alert("Error converting text to speech. Please try again.");
       let index = 12;
-      setActiveButton(null);
+      // setActiveButton(null);
       socket.emit("button-clicked", index);
     }
   }
@@ -319,6 +291,12 @@ function App() {
   const toggleRecording = async () => {
     console.log("toggle");
     if (!isRecording) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+        setAudioPlaying(false);
+      }
+      socket.emit("button-clicked", 13);
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           audio: true,
@@ -430,7 +408,6 @@ function App() {
       className=" h-screen bg-cover bg-center bg-no-repeat flex flex-col items-center justify-center  "
       style={{ backgroundImage: `url(${backgroundImage})` }}
     >
-      {" "}
       {!isFullscreen ? (
         <button
           className="absolute top-4 right-4 p-2  rounded-md transition-opacity duration-300 hover:opacity-100"
@@ -448,7 +425,7 @@ function App() {
           x
         </button>
       )}
-      <div className="flex h-14 items-center bg-gradient-to-r from-[#ffffff74] to-[#d0d0d009] bg-opacity-10 rounded-2xl w-full max-w-5xl mb-24  border z-50 ">
+      <div className="flex h-14 items-center bg-gradient-to-r from-[#ffffff74] to-[#d0d0d009] absolute top-20 bg-opacity-10 rounded-2xl w-full max-w-6xl mb-12  border z-50 ">
         <img src={searchIcon} alt="Search" className="w-6 h-6 mx-2" />
         <input
           type="text"
@@ -483,25 +460,20 @@ function App() {
           )}
         </span>
       </div>
-      <div className="flex flex-col bg-white bg-opacity-5 items-center justify-center w-full max-w-6xl p-10  rounded-md border-2 transition">
+      <div className="w-10 m-10"></div>
+      <div className="flex flex-col   items-center justify-center w-full max-w-7xl    ">
         {isRecording && <Overlay />}
-        <div className="flex items-center justify-center w-full max-w-6xl">
-          <div className="grid grid-cols-3 gap-4 w-full">
+        <div className="flex items-center justify-center w-full max-w-8xl  ">
+          <div className="grid grid-cols-3 gap-6 w-full mt-3">
             {presetQuestions.map((question, buttonIndex) => (
               <button
                 key={buttonIndex}
                 //  onClick={() => handleButtonInteraction(question)}
                 onTouchStart={() => {
-                  if (!buttonsDisabled && !activeButton) {
-                    handleButtonInteraction(question, buttonIndex);
-                  }
+                  handleButtonInteraction(question, buttonIndex);
                 }}
-                disabled={
-                  buttonsDisabled &&
-                  activeButton !== question.question &&
-                  activeButton !== "all"
-                }
-                className={buttonClass(question)}
+                className={buttonClass()}
+                // className={buttonClass(question)}
               >
                 {question.question}
               </button>
@@ -509,22 +481,15 @@ function App() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 w-full mt-6">
+        <div className="grid grid-cols-2 gap-6 w-full mt-6  ">
           {displayedQuestions2.map((question, buttonIndex) => (
             <button
               key={buttonIndex}
-              // onClick={() => handleButtonInteraction(question)}
+              // onTouchStart
               onTouchStart={() => {
-                if (!buttonsDisabled && !activeButton) {
-                  handleButtonInteraction(question, buttonIndex);
-                }
+                handleButtonInteraction(question, buttonIndex);
               }}
-              disabled={
-                buttonsDisabled &&
-                activeButton !== question.question &&
-                activeButton !== "all"
-              }
-              className={buttonClass(question)}
+              className={buttonClass()}
             >
               {question.question}
             </button>
